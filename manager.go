@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"math/rand"
 	"net/http"
 	"sync"
 
@@ -17,13 +16,6 @@ var (
 	}
 )
 
-const (
-	letterBytes   = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-	letterIdxBits = 6                    // 6 bits to represent a letter index
-	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
-)
-
 type Manager struct {
 	testers TesterList
 	sync.RWMutex
@@ -33,24 +25,6 @@ func NewManager() *Manager {
 	return &Manager{
 		testers: make(TesterList),
 	}
-}
-
-func getNewToken(n int) string {
-	b := make([]byte, n)
-	// A rand.Int63() generates 63 random bits, enough for letterIdxMax letters!
-	for i, cache, remain := n-1, rand.Int63(), letterIdxMax; i >= 0; {
-		if remain == 0 {
-			cache, remain = rand.Int63(), letterIdxMax
-		}
-		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
-			b[i] = letterBytes[idx]
-			i--
-		}
-		cache >>= letterIdxBits
-		remain--
-	}
-
-	return string(b)
 }
 
 func (m *Manager) serveWS(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +50,7 @@ func (m *Manager) addTester(tester *Tester) {
 	m.Lock()
 	defer m.Unlock()
 
-	m.testers[tester] = "@" + getNewToken(64)
+	m.testers[tester] = true
 }
 
 func (m *Manager) removeTester(tester *Tester) {
