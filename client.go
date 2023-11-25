@@ -18,7 +18,7 @@ type WebsocketClient struct {
 }
 
 func NewWebsocketClient(p *webrtc.PeerConnection) *WebsocketClient {
-	u := url.URL{Scheme: "wss", Host: "localhost:3000", Path: "/"}
+	u := url.URL{Scheme: "wss", Host: "the.testingwebrtc.com:3000", Path: "/"}
 	log.Printf("connecting to %s", u.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
