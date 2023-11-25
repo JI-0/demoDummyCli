@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,7 +15,7 @@ const (
 )
 
 // Testers map with Tester: identifier
-type TesterList map[*Tester]string
+type TesterList map[*Tester]bool
 
 type Tester struct {
 	connection *websocket.Conn
@@ -68,7 +69,11 @@ func (c *Tester) readMessages() {
 			if payloadParts[0] != "R" {
 				break
 			}
-			start
+			numOfDummies, err := strconv.Atoi(payloadParts[2])
+			if err != nil {
+				break
+			}
+			c.server(payloadParts[1], numOfDummies)
 		}
 	}
 }

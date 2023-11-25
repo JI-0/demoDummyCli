@@ -10,35 +10,24 @@ import (
 	"sync"
 	"time"
 
-	"github.com/at-wat/ebml-go/webm"
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp/codecs"
 	"github.com/pion/webrtc/v4"
-	"github.com/pion/webrtc/v4/pkg/media/samplebuilder"
 )
 
-var numberOf = 100
-
-const spawnDelay = 1
-const autoFinishTime = 20
-
-func server() {
+func (c *Tester) server(streamer string, numberOf int) {
 	var clients []client
-	// timestampFile, timestampWriter := timestampWriter()
-	timestamp()
 
 	for i := 0; i < numberOf; i++ {
 		// timestampWriter.WriteString("Client: " + strconv.Itoa(i) + "\n")
-		chanel <- []byte("N," + strconv.Itoa(i) + "\n")
+		c.egress <- []byte("N\n" + strconv.Itoa(i))
 		cliOK := make(chan string)
-		saver := newWebmSaver()
-		_, peerConnection := createWebRTCConn(saver, i, cliOK)
-		clients = append(clients, *newClient(saver, peerConnection))
+		_, peerConnection := createWebRTCConn(c, streamer, i, cliOK)
+		clients = append(clients, *newClient(peerConnection))
 
 		// Wait for client to finish loading
 		<-cliOK
 		println("Ready: ", i)
-		time.Sleep(time.Second * spawnDelay)
+		time.Sleep(time.Second * 1)
 		// if *limitTimestamp {
 		// 	timestampFile.Close()
 		// 	timestampWriter.Flush()
@@ -48,16 +37,16 @@ func server() {
 	println("All dummy clients ready")
 	closed := make(chan os.Signal, 1)
 	signal.Notify(closed, os.Interrupt)
-	if autoFinishTime != 0 {
+	if 20 != 0 {
 		go func() {
-			time.Sleep(time.Second * autoFinishTime)
+			time.Sleep(time.Second * 20)
 			close(closed)
 		}()
 	}
 	go func() {
 		for {
-			chanel <- []byte("N,NON\n")
-			time.Sleep(time.Second * spawnDelay)
+			c.egress <- []byte("N\nN")
+			time.Sleep(time.Second * 1)
 		}
 	}()
 
@@ -67,38 +56,22 @@ func server() {
 		if err := c.peerCon.Close(); err != nil {
 			panic(err)
 		}
-		c.saver.Close()
 		// //Timestamp
 		// if !*limitTimestamp {
 		// 	c.timestampFile.Close()
 		// 	c.timestampWriter.Flush()
 		// }
 	}
-	time.Sleep(time.Second * autoFinishTime)
+	time.Sleep(time.Second * 20)
 }
 
 type client struct {
-	saver   *webmSaver
 	peerCon *webrtc.PeerConnection
 }
 
-func newClient(s *webmSaver, c *webrtc.PeerConnection) *client {
+func newClient(c *webrtc.PeerConnection) *client {
 	return &client{
-		saver:   s,
 		peerCon: c,
-	}
-}
-
-type webmSaver struct {
-	audioWriter, videoWriter       webm.BlockWriteCloser
-	audioBuilder, videoBuilder     *samplebuilder.SampleBuilder
-	audioTimestamp, videoTimestamp time.Duration
-}
-
-func newWebmSaver() *webmSaver {
-	return &webmSaver{
-		audioBuilder: samplebuilder.New(10, &codecs.OpusPacket{}, 48000),
-		videoBuilder: samplebuilder.New(10, &codecs.VP8Packet{}, 90000),
 	}
 }
 
@@ -114,21 +87,7 @@ func newWebmSaver() *webmSaver {
 // 	return new_file, writer
 // }
 
-func (s *webmSaver) Close() {
-	fmt.Printf("Finalizing webm...\n")
-	if s.audioWriter != nil {
-		if err := s.audioWriter.Close(); err != nil {
-			panic(err)
-		}
-	}
-	if s.videoWriter != nil {
-		if err := s.videoWriter.Close(); err != nil {
-			panic(err)
-		}
-	}
-}
-
-func createWebRTCConn(saver *webmSaver, num int, cliOK chan string) (*WebsocketClient, *webrtc.PeerConnection) {
+func createWebRTCConn(c *Tester, streamer string, num int, cliOK chan string) (*WebsocketClient, *webrtc.PeerConnection) {
 	var candidatesMux sync.Mutex
 	pendingCandidates := make([]*webrtc.ICECandidate, 0)
 
@@ -212,7 +171,8 @@ func createWebRTCConn(saver *webmSaver, num int, cliOK chan string) (*WebsocketC
 			}
 			switch track.Kind() {
 			case webrtc.RTPCodecTypeVideo:
-				newTimestamp(num)
+				t := time.Now().UnixMilli()
+				c.egress <- []byte(strconv.Itoa(num) + "\n" + strconv.FormatInt(t, 10))
 			}
 		}
 	})
@@ -226,12 +186,7 @@ func createWebRTCConn(saver *webmSaver, num int, cliOK chan string) (*WebsocketC
 			close(cliOK)
 		}
 	})
-	ws.egress <- []byte("R\n" + "0")
+	ws.egress <- []byte("R\n" + streamer)
 
 	return ws, peerConnection
-}
-
-func newTimestamp(num int) {
-	t := time.Now().UnixMilli()
-	chanel <- []byte(strconv.Itoa(num) + "," + strconv.FormatInt(t, 10) + "\n")
 }
