@@ -114,7 +114,6 @@ func (c *Tester) writeMessages() {
 
 		case <-ticker.C:
 			if err := c.connection.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				// log.Panicf("Failed to send message: %v", err)
 				return
 			}
 		}

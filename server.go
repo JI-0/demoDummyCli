@@ -52,9 +52,9 @@ func (c *Tester) server(streamer string, numberOf int) {
 
 	<-closed
 
-	for _, c := range clients {
-		if err := c.peerCon.Close(); err != nil {
-			panic(err)
+	for _, cl := range clients {
+		if err := cl.peerCon.Close(); err != nil {
+			c.egress <- []byte("<CK>Error")
 		}
 		// //Timestamp
 		// if !*limitTimestamp {
@@ -106,13 +106,13 @@ func createWebRTCConn(c *Tester, streamer string, num int, cliOK chan string) (*
 		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "video/VP8", ClockRate: 90000, Channels: 0, SDPFmtpLine: "", RTCPFeedback: nil},
 		PayloadType:        96,
 	}, webrtc.RTPCodecTypeVideo); err != nil {
-		panic(err)
+		c.egress <- []byte("<CK>Error")
 	}
 	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
 		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "audio/opus", ClockRate: 48000, Channels: 0, SDPFmtpLine: "", RTCPFeedback: nil},
 		PayloadType:        111,
 	}, webrtc.RTPCodecTypeAudio); err != nil {
-		panic(err)
+		c.egress <- []byte("<CK>Error")
 	}
 
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(m))
@@ -120,7 +120,7 @@ func createWebRTCConn(c *Tester, streamer string, num int, cliOK chan string) (*
 	// Create a new RTCPeerConnection
 	peerConnection, err := api.NewPeerConnection(config)
 	if err != nil {
-		panic(err)
+		c.egress <- []byte("<CK>Error")
 	}
 
 	// Create a websocketclient
@@ -142,7 +142,6 @@ func createWebRTCConn(c *Tester, streamer string, num int, cliOK chan string) (*
 		} else {
 			payload, onICECandidateErr := json.Marshal(desc)
 			if onICECandidateErr != nil {
-				panic(onICECandidateErr)
 			}
 			ws.egress <- []byte("C\n" + ws.peerID + "\n" + string(payload))
 		}
@@ -167,7 +166,6 @@ func createWebRTCConn(c *Tester, streamer string, num int, cliOK chan string) (*
 				if readErr == io.EOF {
 					return
 				}
-				// panic(readErr)
 			}
 			switch track.Kind() {
 			case webrtc.RTPCodecTypeVideo:
