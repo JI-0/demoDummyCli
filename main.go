@@ -1,8 +1,7 @@
 package main
 
 import (
-	"crypto/tls"
-	"log"
+	"fmt"
 	"net/http"
 )
 
@@ -16,20 +15,9 @@ func main() {
 	srv := &http.Server{
 		Addr:    ":3002",
 		Handler: mux,
-		TLSConfig: &tls.Config{
-			GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-				cert, err := tls.LoadX509KeyPair("/etc/letsencrypt/live/the.testingwebrtc.com/fullchain.pem",
-					"/etc/letsencrypt/live/the.testingwebrtc.com/privkey.pem")
-				if err != nil {
-					log.Println("Failed to load TLS certificate!")
-					return nil, err
-				}
-				return &cert, nil
-			},
-		},
 	}
 
-	srv.ListenAndServeTLS("", "")
+	fmt.Print(srv.ListenAndServe())
 
 	println("Shutting down dummy cli server")
 }

@@ -28,8 +28,6 @@ func NewManager() *Manager {
 }
 
 func (m *Manager) serveWS(w http.ResponseWriter, r *http.Request) {
-	log.Println("Got something")
-
 	// Upgrade from http
 	conn, err := websocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
